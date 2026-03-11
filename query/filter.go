@@ -24,6 +24,13 @@ type Filter struct {
 	CondType CondType
 }
 
+type VecFilter struct {
+	Input    VecOperator
+	Column   string
+	Value    any
+	CondType CondType
+}
+
 func (f *Filter) Execute() ([]Row, error) {
 	if f.Input == nil {
 		return nil, fmt.Errorf("Filter input is nil")
@@ -47,6 +54,54 @@ func (f *Filter) Execute() ([]Row, error) {
 	}
 
 	return out, nil
+}
+
+func (f *VecFilter) Next() (*Batch, error) {
+
+	batch, err := f.Input.Next()
+	if err != nil || batch == nil {
+		return batch, err
+	}
+
+	col := batch.Columns[f.Column]
+
+	var selected []int
+
+	for i := 0; i < batch.Size; i++ {
+		v := col.Data[i]
+
+		switch f.CondType {
+		case GreaterThan:
+			if toFloat(v) > toFloat(f.Value) {
+				selected = append(selected, i)
+			}
+
+		case SmallerThan:
+			if toFloat(v) < toFloat(f.Value) {
+				selected = append(selected, i)
+			}
+		}
+	}
+
+	newBatch := &Batch{
+		Columns: make(map[string]*Vector),
+		Size:    len(selected),
+	}
+
+	for colName, vec := range batch.Columns {
+		newVec := &Vector{
+			Data: make([]any, len(selected)),
+		}
+
+		for i, idx := range selected {
+			newVec.Data[i] = vec.Data[idx]
+		}
+
+		newBatch.Columns[colName] = newVec
+	}
+
+	return newBatch, nil
+
 }
 
 // safe evaluation

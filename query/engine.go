@@ -10,6 +10,10 @@ type Operator interface {
 	Execute() ([]Row, error)
 }
 
+type VecOperator interface {
+	Next() (*Batch, error)
+}
+
 type Engine struct {
 	DBPath string
 }

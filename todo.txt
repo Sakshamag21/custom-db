@@ -2,6 +2,3 @@ Locking
 Streaming compaction
 Separate snapshot files
 -Columnar Partitioning
--Query Engine
--Pushdown filtering
--Database pruning

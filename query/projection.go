@@ -5,6 +5,11 @@ type Projection struct {
 	Columns []string
 }
 
+type VecProjection struct {
+	Input   VecOperator
+	Columns []string
+}
+
 func (p *Projection) Execute() ([]Row, error) {
 	rows, err := p.Input.Execute()
 	if err != nil {
@@ -24,4 +29,24 @@ func (p *Projection) Execute() ([]Row, error) {
 	}
 
 	return result, nil
+}
+
+func (p *VecProjection) Next() (*Batch, error) {
+
+	batch, err := p.Input.Next()
+
+	if err != nil || batch == nil {
+		return batch, err
+	}
+
+	out := &Batch{
+		Columns: make(map[string]*Vector),
+		Size:    batch.Size,
+	}
+
+	for _, col := range p.Columns {
+		out.Columns[col] = batch.Columns[col]
+	}
+
+	return out, nil
 }
