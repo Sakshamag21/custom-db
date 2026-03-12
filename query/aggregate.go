@@ -2,7 +2,7 @@ package query
 
 import (
 	"fmt"
-	"strings"
+	// "strings"
 )
 
 type AggType string
@@ -14,93 +14,132 @@ const (
 )
 
 type Aggregate struct {
-	Input   Operator
+	Input   VecOperator
 	Column  string
 	Type    AggType
 	GroupBy []string
+	done    bool
 }
 
-func (a *Aggregate) Execute() ([]Row, error) {
-	rows, err := a.Input.Execute()
+func (a *Aggregate) Next() (*Batch, error) {
 
-	if err != nil {
-		return nil, err
+	if a.done {
+		return nil, nil
 	}
 
 	if len(a.GroupBy) == 0 {
-		switch a.Type {
-		case COUNT:
-			return []Row{
-				{"count": len(rows)},
-			}, nil
 
-		case SUM:
-			var sum int64
-			for _, r := range rows {
-				sum += r[a.Column].(int64)
+		var count int64
+		var sum float64
+
+		for {
+			batch, err := a.Input.Next()
+
+			if err != nil {
+				return nil, err
 			}
 
-			return []Row{
-				{"sum": sum},
-			}, nil
-
-		case AVG:
-			var sum int64
-			for _, r := range rows {
-				sum += r[a.Column].(int64)
+			if batch == nil {
+				break
 			}
 
-			return []Row{
-				{"avg": sum / int64(len(rows))},
-			}, nil
+			count += int64(batch.Size)
+
+			if a.Type == SUM || a.Type == AVG {
+				col := batch.Columns[a.Column]
+
+				for i := 0; i < batch.Size; i++ {
+					sum += toFloat(col.Data[i])
+				}
+			}
 		}
 
-	}
+		a.done = true
 
-	groups := make(map[string][]Row)
-
-	for _, r := range rows {
-		var keyParts []string
-		for _, col := range a.GroupBy {
-			keyParts = append(keyParts, fmt.Sprint(r[col]))
-		}
-
-		key := strings.Join(keyParts, "|")
-		groups[key] = append(groups[key], r)
-	}
-
-	var result []Row
-
-	for key, groupRows := range groups {
-		out := make(Row)
-
-		parts := strings.Split(key, "|")
-
-		for i, col := range a.GroupBy {
-			out[col] = parts[i]
+		result := &Batch{
+			Columns: map[string]*Vector{},
+			Size:    1,
 		}
 
 		switch a.Type {
 		case COUNT:
-			out["count"] = len(groupRows)
+			result.Columns["count"] = &Vector{
+				Data: []any{count},
+			}
+
 		case SUM:
-			var sum int64
-			for _, r := range groupRows {
-				sum += r[a.Column].(int64)
+
+			result.Columns["sum"] = &Vector{
+				Data: []any{sum},
 			}
-			out["sum"] = sum
+
 		case AVG:
-			var sum int64
-			for _, r := range groupRows {
-				sum += r[a.Column].(int64)
+
+			result.Columns["avg"] = &Vector{
+				Data: []any{sum / float64(count)},
 			}
-			out["avg"] = sum / int64(len(groupRows))
 		}
 
-		result = append(result, out)
+		return result, nil
 
+	}
+
+	groups := map[string]float64{}
+	counts := map[string]int64{}
+
+	for {
+		batch, err := a.Input.Next()
+
+		if err != nil {
+			return nil, err
+		}
+
+		if batch == nil {
+			break
+		}
+
+		groupVec := batch.Columns[a.GroupBy[0]]
+		valueVec := batch.Columns[a.Column]
+
+		for i := 0; i < batch.Size; i++ {
+			key := fmt.Sprint(groupVec.Data[i])
+			val := toFloat(valueVec.Data[i])
+
+			groups[key] += val
+			counts[key]++
+		}
+
+	}
+
+	size := len(groups)
+
+	keys := make([]any, 0, size)
+	values := make([]any, 0, size)
+
+	for k, v := range groups {
+
+		keys = append(keys, k)
+
+		switch a.Type {
+
+		case SUM:
+			values = append(values, v)
+
+		case COUNT:
+			values = append(values, counts[k])
+
+		case AVG:
+			values = append(values, v/float64(counts[k]))
+		}
+	}
+
+	result := &Batch{
+		Columns: map[string]*Vector{
+			a.GroupBy[0]:   {Data: keys},
+			string(a.Type): {Data: values},
+		},
+		Size: size,
 	}
 
 	return result, nil
-
 }

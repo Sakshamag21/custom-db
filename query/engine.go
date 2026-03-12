@@ -24,7 +24,7 @@ func NewEngine(path string) *Engine {
 	}
 }
 
-func (e *Engine) Execute(q Query) ([]Row, error) {
+func (e *Engine) Next(q Query) (*Batch, error) {
 	// var op Operator
 
 	// op = &Scan{
@@ -69,5 +69,5 @@ func (e *Engine) Execute(q Query) ([]Row, error) {
 
 	physical := BuildPhysical(optimized, e.DBPath)
 
-	return physical.Execute()
+	return physical.Next()
 }

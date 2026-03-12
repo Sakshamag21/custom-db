@@ -200,13 +200,26 @@ func main() {
 		Limit: 5,
 	}
 
-	rows, err := engine.Execute(q)
+	for {
+		batch, err := engine.Next(q)
+		if err != nil {
+			panic(err)
+		}
 
-	if err != nil {
-		panic(err)
-	}
+		if batch == nil {
+			break
+		}
 
-	for _, r := range rows {
-		fmt.Println(r)
+		fmt.Println(batch)
+
+		for i := 0; i < batch.Size; i++ {
+			row := make(map[string]any)
+
+			for col, vec := range batch.Columns {
+				row[col] = vec.Data[i]
+			}
+
+			fmt.Println(row)
+		}
 	}
 }

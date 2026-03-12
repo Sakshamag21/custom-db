@@ -1,8 +1,8 @@
 package query
 
-import (
-	"fmt"
-)
+// import (
+// 	"fmt"
+// )
 
 type FilterFunc func(Row) bool
 
@@ -31,30 +31,30 @@ type VecFilter struct {
 	CondType CondType
 }
 
-func (f *Filter) Execute() ([]Row, error) {
-	if f.Input == nil {
-		return nil, fmt.Errorf("Filter input is nil")
-	}
+// func (f *Filter) Execute() ([]Row, error) {
+// 	if f.Input == nil {
+// 		return nil, fmt.Errorf("Filter input is nil")
+// 	}
 
-	rows, err := f.Input.Execute()
-	if err != nil {
-		return nil, err
-	}
+// 	rows, err := f.Input.Execute()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	var out []Row
+// 	var out []Row
 
-	for _, r := range rows {
-		if r == nil {
-			continue
-		}
+// 	for _, r := range rows {
+// 		if r == nil {
+// 			continue
+// 		}
 
-		if f.evaluateSafe(r) {
-			out = append(out, r)
-		}
-	}
+// 		if f.evaluateSafe(r) {
+// 			out = append(out, r)
+// 		}
+// 	}
 
-	return out, nil
-}
+// 	return out, nil
+// }
 
 func (f *VecFilter) Next() (*Batch, error) {
 

@@ -1,11 +1,11 @@
 package query
 
-func BuildPhysical(plan LogicalPlan, dbPath string) Operator {
+func BuildPhysical(plan LogicalPlan, dbPath string) VecOperator {
 
 	switch p := plan.(type) {
 
 	case *LogicalScan:
-		return &Scan{
+		return &VecScan{
 			DBPath: dbPath,
 		}
 
@@ -13,7 +13,7 @@ func BuildPhysical(plan LogicalPlan, dbPath string) Operator {
 
 		input := BuildPhysical(p.Input, dbPath)
 
-		return &Filter{
+		return &VecFilter{
 			Input:    input,
 			Column:   p.Cond.Column,
 			Value:    p.Cond.Value,
@@ -24,7 +24,7 @@ func BuildPhysical(plan LogicalPlan, dbPath string) Operator {
 
 		input := BuildPhysical(p.Input, dbPath)
 
-		return &Projection{
+		return &VecProjection{
 			Input:   input,
 			Columns: p.Columns,
 		}
@@ -33,7 +33,7 @@ func BuildPhysical(plan LogicalPlan, dbPath string) Operator {
 
 		input := BuildPhysical(p.Input, dbPath)
 
-		return &Limit{
+		return &VecLimit{
 			Input: input,
 			N:     p.N,
 		}
