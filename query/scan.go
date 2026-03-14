@@ -17,11 +17,24 @@ type VecScan struct {
 	DBPath string
 	data   []Row
 	pos    int
+	loaded bool
 }
 
 const BatchSize = 1024
 
 func (s *VecScan) Next() (*Batch, error) {
+
+	// 🔹 Load data only once
+	if !s.loaded {
+
+		rows, err := coreDB.ReadCurrent(s.DBPath)
+		if err != nil {
+			return nil, err
+		}
+
+		s.data = rows
+		s.loaded = true
+	}
 
 	if s.pos >= len(s.data) {
 		return nil, nil
@@ -40,12 +53,14 @@ func (s *VecScan) Next() (*Batch, error) {
 		Size:    len(rows),
 	}
 
+	// create column vectors
 	for col := range rows[0] {
 		batch.Columns[col] = &Vector{
 			Data: make([]any, len(rows)),
 		}
 	}
 
+	// fill vectors
 	for i, r := range rows {
 		for col, val := range r {
 			batch.Columns[col].Data[i] = val
@@ -53,5 +68,4 @@ func (s *VecScan) Next() (*Batch, error) {
 	}
 
 	return batch, nil
-
 }

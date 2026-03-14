@@ -210,7 +210,7 @@ func main() {
 			break
 		}
 
-		fmt.Println(batch)
+		// fmt.Println(batch)
 
 		for i := 0; i < batch.Size; i++ {
 			row := make(map[string]any)
@@ -221,5 +221,7 @@ func main() {
 
 			fmt.Println(row)
 		}
+
+		break
 	}
 }

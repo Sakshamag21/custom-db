@@ -34,7 +34,7 @@ func ReadSnapshot(outputDir string, snapshotID string) ([]Record, error) {
 	var all []Record
 
 	for _, file := range snap.Files {
-		filePath := filepath.Join(outputDir, file)
+		filePath := filepath.Join(outputDir, file.Path)
 
 		recs, err := readSingleFile(filePath, meta.Schema)
 
@@ -76,7 +76,7 @@ func GarbageCollect(outputDir string) error {
 
 	for _, snap := range meta.Snapshots {
 		for _, f := range snap.Files {
-			referenced[f] = true
+			referenced[f.Path] = true
 		}
 	}
 

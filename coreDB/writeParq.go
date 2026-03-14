@@ -185,6 +185,60 @@ func getSnapshot(meta Metadata, id string) Snapshot {
 	return Snapshot{}
 }
 
+func computeZoneMap(records []Record, schema map[string]string) map[string]ZoneMap {
+	zone := make(map[string]ZoneMap)
+
+	for col := range schema {
+		var min interface{}
+		var max interface{}
+
+		for i, r := range records {
+			v := r[col]
+
+			if i == 0 {
+				min = v
+				max = v
+				continue
+			}
+
+			switch val := v.(type) {
+			case int64:
+				if val < min.(int64) {
+					min = val
+				}
+
+				if val > max.(int64) {
+					max = val
+				}
+
+			case int32:
+				if val < min.(int32) {
+					min = val
+				}
+
+				if val > max.(int32) {
+					max = val
+				}
+
+			case string:
+				if val < min.(string) {
+					min = val
+				}
+				if val > max.(string) {
+					max = val
+				}
+			}
+		}
+
+		zone[col] = ZoneMap{
+			Min: min,
+			Max: max,
+		}
+	}
+
+	return zone
+}
+
 func WriteParquet(records []Record, outputDir string) error {
 
 	if len(records) == 0 {
@@ -200,7 +254,7 @@ func WriteParquet(records []Record, outputDir string) error {
 		return err
 	}
 
-	var newFiles []string
+	var newFiles []FileMeta
 
 	for _, record := range records {
 		for col := range record {
@@ -249,9 +303,16 @@ func WriteParquet(records []Record, outputDir string) error {
 			return err
 		}
 
+		zone := computeZoneMap(recs, meta.Schema)
+
 		relPath := filepath.Join("data", letter, fileName)
 
-		newFiles = append(newFiles, relPath)
+		fileMeta := FileMeta{
+			Path:     relPath,
+			ZoneMaps: zone,
+		}
+
+		newFiles = append(newFiles, fileMeta)
 	}
 
 	fmt.Println(newFiles)
@@ -268,7 +329,7 @@ func WriteParquet(records []Record, outputDir string) error {
 		baseVersion := currentMeta.Version
 
 		// Get current snapshot files
-		var allFiles []string
+		var allFiles []FileMeta
 		if currentMeta.CurrentSnapshot != "" {
 			prev := getSnapshot(currentMeta, currentMeta.CurrentSnapshot)
 			allFiles = append(allFiles, prev.Files...)

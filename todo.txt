@@ -1,4 +1,9 @@
-Locking
-Streaming compaction
-Separate snapshot files
--Columnar Partitioning
+Zone Maps
+
+Bloom filters
+
+Column projection pushdown
+
+Parallel scan workers
+
+Cost-based query planner

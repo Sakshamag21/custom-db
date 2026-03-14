@@ -11,7 +11,7 @@ import (
 type Snapshot struct {
 	ID        string
 	Timestamp string
-	Files     []string
+	Files     []FileMeta
 }
 
 type Metadata struct {
@@ -19,6 +19,16 @@ type Metadata struct {
 	Schema          map[string]string
 	CurrentSnapshot string
 	Snapshots       []Snapshot
+}
+
+type ZoneMap struct {
+	Min interface{} `json: "min"`
+	Max interface{} `json: "max"`
+}
+
+type FileMeta struct {
+	Path     string             `json:"path"`
+	ZoneMaps map[string]ZoneMap `json:"zonemaps"`
 }
 
 func metadataPath(outputDir string) string {

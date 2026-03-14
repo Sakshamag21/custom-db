@@ -26,19 +26,22 @@ func CompactCurrentSnapshot(outputDir string) error {
 	partitions := make(map[string][]string)
 
 	for _, f := range current.Files {
-		fullPath := filepath.Join(outputDir, f)
+		fullPath := filepath.Join(outputDir, f.Path)
 		dir := filepath.Dir(fullPath)
 		partitions[dir] = append(partitions[dir], fullPath)
 	}
 
-	var newFiles []string
+	var newFiles []FileMeta
 
 	for partitionDir, files := range partitions {
 
 		if len(files) == 1 {
 			// keep file as is
 			rel, _ := filepath.Rel(outputDir, files[0])
-			newFiles = append(newFiles, rel)
+			newFiles = append(newFiles, FileMeta{
+				Path:     rel,
+				ZoneMaps: nil,
+			})
 			continue
 		}
 
@@ -64,8 +67,14 @@ func CompactCurrentSnapshot(outputDir string) error {
 			return err
 		}
 
+		zone := computeZoneMap(all, meta.Schema)
+
 		rel, _ := filepath.Rel(outputDir, newPath)
-		newFiles = append(newFiles, rel)
+		fileMeta := FileMeta{
+			Path:     rel,
+			ZoneMaps: zone,
+		}
+		newFiles = append(newFiles, fileMeta)
 	}
 
 	// 🚨 CRITICAL GUARD
