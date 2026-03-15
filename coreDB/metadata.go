@@ -35,7 +35,7 @@ func metadataPath(outputDir string) string {
 	return filepath.Join(outputDir, "metadata.json")
 }
 
-func loadMetadata(outputDir string) (Metadata, error) {
+func LoadMetadata(outputDir string) (Metadata, error) {
 
 	var meta Metadata
 
@@ -85,7 +85,7 @@ func saveMetadata(outputDir string, meta Metadata) error {
 }
 
 func commitMetadata(outputDir string, newMeta Metadata, expectedVersion int) error {
-	currentMeta, err := loadMetadata(outputDir)
+	currentMeta, err := LoadMetadata(outputDir)
 
 	if err != nil {
 		return err

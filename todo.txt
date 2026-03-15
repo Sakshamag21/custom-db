@@ -1,5 +1,3 @@
-Zone Maps
-
 Bloom filters
 
 Column projection pushdown

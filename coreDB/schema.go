@@ -26,7 +26,7 @@ func CreateDB(outputDir string, schema map[string]string) error {
 }
 
 func AddColumn(baseDir string, column string, colType string) error {
-	meta, err := loadMetadata(baseDir)
+	meta, err := LoadMetadata(baseDir)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func AddColumn(baseDir string, column string, colType string) error {
 }
 
 func DropColumn(baseDir string, column string) error {
-	meta, err := loadMetadata(baseDir)
+	meta, err := LoadMetadata(baseDir)
 
 	if err != nil {
 		return err

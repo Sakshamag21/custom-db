@@ -14,10 +14,12 @@ func (s *Scan) Execute() ([]Row, error) {
 }
 
 type VecScan struct {
-	DBPath string
-	data   []Row
-	pos    int
-	loaded bool
+	DBPath      string
+	BloomColumn string
+	BloomValue  string
+	data        []Row
+	pos         int
+	loaded      bool
 }
 
 const BatchSize = 1024
@@ -27,9 +29,36 @@ func (s *VecScan) Next() (*Batch, error) {
 	// 🔹 Load data only once
 	if !s.loaded {
 
-		rows, err := coreDB.ReadCurrent(s.DBPath)
-		if err != nil {
-			return nil, err
+		var rows []Row
+		var err error
+
+		if s.BloomColumn != "" {
+			meta, err := coreDB.LoadMetadata(s.DBPath)
+
+			if err != nil {
+				return nil, err
+			}
+
+			files, err := coreDB.BloomPruneFiles(
+				s.DBPath,
+				s.BloomColumn,
+				s.BloomValue,
+			)
+
+			if err != nil {
+				return nil, err
+			}
+
+			rows, err = coreDB.ReadSelectedFiles(files, meta.Schema)
+
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			rows, err = coreDB.ReadCurrent(s.DBPath)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		s.data = rows

@@ -11,7 +11,7 @@ import (
 
 func CompactCurrentSnapshot(outputDir string) error {
 
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 	if err != nil {
 		return err
 	}

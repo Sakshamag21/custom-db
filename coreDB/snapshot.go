@@ -13,7 +13,7 @@ func newSnapshotID(meta *Metadata) string {
 }
 
 func ReadCurrentSnapshot(outputDir string) ([]Record, error) {
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func ReadCurrentSnapshot(outputDir string) ([]Record, error) {
 }
 
 func ReadSnapshot(outputDir string, snapshotID string) ([]Record, error) {
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func ReadSnapshot(outputDir string, snapshotID string) ([]Record, error) {
 }
 
 func ExpireSnapshots(outputDir string, retainLast int) error {
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func ExpireSnapshots(outputDir string, retainLast int) error {
 }
 
 func GarbageCollect(outputDir string) error {
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 	if err != nil {
 		return err
 	}

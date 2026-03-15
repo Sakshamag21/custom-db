@@ -239,7 +239,7 @@ func computeZoneMap(records []Record, schema map[string]string) map[string]ZoneM
 	return zone
 }
 
-func WriteParquet(records []Record, outputDir string) error {
+func WriteParquet(records []Record, outputDir string, bloomConfig BloomConfig) error {
 
 	if len(records) == 0 {
 		return fmt.Errorf("no records provided")
@@ -249,7 +249,7 @@ func WriteParquet(records []Record, outputDir string) error {
 		return err
 	}
 
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 	if err != nil {
 		return err
 	}
@@ -313,6 +313,15 @@ func WriteParquet(records []Record, outputDir string) error {
 		}
 
 		newFiles = append(newFiles, fileMeta)
+
+		blooms := buildBloomFilters(recs, bloomConfig)
+
+		err = saveBloomFile(filePath, blooms)
+
+		if err != nil {
+			return err
+		}
+
 	}
 
 	fmt.Println(newFiles)
@@ -321,7 +330,7 @@ func WriteParquet(records []Record, outputDir string) error {
 
 	for retries := 0; retries < maxRetries; retries++ {
 
-		currentMeta, err := loadMetadata(outputDir)
+		currentMeta, err := LoadMetadata(outputDir)
 		if err != nil {
 			return err
 		}

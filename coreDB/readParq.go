@@ -64,7 +64,7 @@ func readSingleFile(filePath string, schema map[string]string) ([]Record, error)
 
 func ReadCurrent(outputDir string) ([]Record, error) {
 
-	meta, err := loadMetadata(outputDir)
+	meta, err := LoadMetadata(outputDir)
 	if err != nil {
 		return nil, err
 	}

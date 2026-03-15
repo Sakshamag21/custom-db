@@ -141,6 +141,12 @@ func main() {
 	// 	"value": "INT64",
 	// }
 
+	// bloomConfig := BloomConfig{
+	// 	Columns: []string{"id"},
+	// 	Size:    10000,
+	// 	Hashes:  4,
+	// }
+
 	// err := coreDB.CreateDB(outputDir, schema)
 	// if err != nil {
 	// 	log.Fatal(err)
