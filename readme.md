@@ -1,46 +1,99 @@
 # Custom Parquet DB
 
-A lightweight, single-node Parquet-based database with snapshotting, atomic metadata management, OCC-based writes, and a SQL-like query engine in Go.
+A lightweight **single-node analytical database** built on **Parquet** with snapshot-based storage, atomic metadata commits, and a vectorized query engine written in Go.
+
+The system is inspired by modern data lake and analytical engines like DuckDB, ClickHouse, and Apache Iceberg.
 
 ---
 
-## Features
+# Features
 
-### Storage & Metadata
+## Storage Engine
 
-* Stores data in **Parquet files** partitioned by the first letter of the `id`.
-* Maintains **snapshots** for atomic commits and rollback.
-* Uses **atomic metadata writes** to avoid corruption.
-* Supports **Optimistic Concurrency Control (OCC)** for safe parallel writes.
+* Data stored in **Parquet files** for efficient columnar analytics.
+* Files are **partitioned by the first letter of `id`**.
+* Each write produces a **snapshot**, enabling atomic commits.
+* **Metadata is written atomically** to avoid corruption.
+* Uses **Optimistic Concurrency Control (OCC)** for safe concurrent writes.
 
-### Schema Management
+---
 
-* `CreateDB(outputDir, schema)` — create a database with a schema.
-* `AddColumn(baseDir, column, type)` — add a new column.
+## Schema Management
+
+Supports schema evolution:
+
+* `CreateDB(outputDir, schema)` — initialize a database.
+* `AddColumn(baseDir, column, type)` — add a column.
 * `DropColumn(baseDir, column)` — remove a column.
 
-### Data Writing
+Schema types supported:
 
-* `WriteParquet(records, outputDir)` — writes data to Parquet, creates snapshots.
-* Supports **retry logic** with OCC for parallel writers.
-* Automatically generates **part files** and groups them by `id`.
+```
+STRING
+INT32
+INT64
+DOUBLE
+BOOLEAN
+```
 
-### Compaction & Garbage Collection
+---
 
-* `GarbageCollect(outputDir)` — removes orphaned Parquet files.
-* Can compact old snapshots safely without affecting the active snapshot.
+## Data Writing
 
-### Query Engine
+`WriteParquet(records, outputDir)`:
 
-Supports SQL-like operations using operators:
-
-* **Scan** — read all rows from DB.
-* **Filter** — filter rows by condition (`>`, `<`, `=`, `!=`, or custom function).
-* **Projection** — select specific columns.
-* **Limit** — limit the number of returned rows.
-* **Aggregate** — supports `COUNT`, `SUM`, `AVG` with optional `GROUP BY`.
+* Writes records to partitioned Parquet files.
+* Creates a **new snapshot** for each successful commit.
+* Uses **retry logic with OCC** for concurrent writers.
+* Automatically generates **part files**.
 
 Example:
+
+```go
+records := []coreDB.Record{
+    {"id": "A1", "age": 25, "value": 100},
+    {"id": "B2", "age": 30, "value": 200},
+}
+
+err := coreDB.WriteParquet(records, "mydb")
+```
+
+---
+
+## Snapshot System
+
+Snapshots provide:
+
+* Atomic commits
+* Time-travel potential
+* Safe compaction
+* Concurrent writer safety
+
+Metadata example:
+
+```
+metadata.json
+ ├ version
+ ├ schema
+ ├ currentSnapshot
+ └ snapshots
+```
+
+---
+
+## Query Engine
+
+The query engine uses **operator pipelines** similar to modern analytical databases.
+
+Operators include:
+
+* **Scan** – reads Parquet files
+* **Filter** – apply conditions (`>`, `<`, `=`, `!=`)
+* **Projection** – select specific columns
+* **Aggregate** – `COUNT`, `SUM`, `AVG`
+* **Limit** – restrict result size
+
+Example query:
 
 ```go
 q := query.Query{
@@ -52,6 +105,7 @@ q := query.Query{
     },
     Limit: 5,
 }
+
 rows, _ := engine.Execute(q)
 ```
 
@@ -66,9 +120,146 @@ LIMIT 5;
 
 ---
 
-## Installation
+## Vectorized Execution
 
-```bash
+The engine supports **vectorized processing** using column vectors and batches.
+
+Execution flow:
+
+```
+Parquet Files
+     ↓
+VecScan
+     ↓
+VecFilter
+     ↓
+Projection
+     ↓
+Aggregation
+     ↓
+Limit
+```
+
+Vectorized execution significantly improves analytical query performance.
+
+---
+
+## Query Pruning Optimizations
+
+To avoid scanning unnecessary data, the engine supports multiple pruning techniques.
+
+### Partition Pruning
+
+Files are partitioned by `id` prefix:
+
+```
+data/
+ ├ A/
+ ├ B/
+ ├ C/
+```
+
+Only relevant partitions are scanned.
+
+---
+
+### Bloom Filters
+
+User-defined bloom filters allow fast equality pruning.
+
+Example configuration:
+
+```
+BloomFilter columns: ["id", "email"]
+```
+
+Before scanning a file:
+
+```
+bloom check → skip file if value impossible
+```
+
+---
+
+### Zone Maps
+
+Each file stores column statistics:
+
+```
+age: min=18 max=65
+value: min=10 max=1000
+```
+
+Queries can skip files where conditions cannot match.
+
+Example:
+
+```
+WHERE age > 80
+```
+
+File skipped if:
+
+```
+max(age) < 80
+```
+
+---
+
+### Row Group Pruning
+
+Parquet files are divided into **row groups**.
+
+Example:
+
+```
+file.parquet
+ ├ rowgroup1 (age 0–20)
+ ├ rowgroup2 (age 21–40)
+ └ rowgroup3 (age 41–80)
+```
+
+Query:
+
+```
+WHERE age > 50
+```
+
+Only rowgroup3 must be scanned.
+
+---
+
+## Compaction
+
+Small files can be merged into larger ones.
+
+```
+CompactCurrentSnapshot(outputDir)
+```
+
+Benefits:
+
+* fewer files
+* faster scans
+* improved storage efficiency
+
+---
+
+## Garbage Collection
+
+Orphaned files can be safely removed:
+
+```
+GarbageCollect(outputDir)
+```
+
+Ensures unused Parquet files from older snapshots are deleted.
+
+---
+
+# Installation
+
+```
 git clone <repo-url>
 cd custom_db
 go mod tidy
@@ -76,9 +267,9 @@ go mod tidy
 
 ---
 
-## Usage
+# Usage
 
-### Creating a DB
+## Creating a Database
 
 ```go
 schema := map[string]string{
@@ -90,7 +281,9 @@ schema := map[string]string{
 err := coreDB.CreateDB("mydb", schema)
 ```
 
-### Writing Data
+---
+
+## Writing Data
 
 ```go
 records := []coreDB.Record{
@@ -101,7 +294,9 @@ records := []coreDB.Record{
 err := coreDB.WriteParquet(records, "mydb")
 ```
 
-### Querying Data
+---
+
+## Querying Data
 
 ```go
 engine := query.NewEngine("mydb")
@@ -117,12 +312,15 @@ q := query.Query{
 }
 
 rows, _ := engine.Execute(q)
+
 for _, r := range rows {
     fmt.Println(r)
 }
 ```
 
-### Aggregation with Group By
+---
+
+## Aggregation Example
 
 ```go
 agg := &query.Aggregate{
@@ -137,42 +335,51 @@ rows, _ := agg.Execute()
 
 ---
 
-## Architecture
+# Architecture
 
 ```
-Parquet Files (partitioned by id)
-        ↓
-       Scan
-        ↓
-      Filter
-        ↓
-    Projection
-        ↓
-     Aggregate
-        ↓
-      Limit
-        ↓
-      Results
+             Query
+               ↓
+           Planner
+               ↓
+        Operator Pipeline
+               ↓
+        ┌───────────────┐
+        │ VecScan       │
+        └──────┬────────┘
+               ↓
+        Bloom Filter
+               ↓
+        Zone Map Pruning
+               ↓
+        Row Group Pruning
+               ↓
+           VecFilter
+               ↓
+           Projection
+               ↓
+           Aggregate
+               ↓
+             Limit
+               ↓
+            Result
 ```
-
-* **Operators** form a pipeline.
-* **Snapshots** ensure atomic commits.
-* **OCC** prevents conflicts during concurrent writes.
-* **Compaction** and **GC** maintain storage efficiency.
 
 ---
 
-## Future Improvements
+# Future Improvements
 
-* Full SQL parser to allow queries as strings.
-* Streaming row iterators for memory-efficient query execution.
-* Predicate pushdown to scan only relevant files.
-* Parallel file scanning for faster query performance.
+Planned enhancements:
+
+* SQL parser for string queries
+* Streaming parquet reader (avoid loading full dataset)
+* Parallel file scanning
+* Cost-based query planner
+* Index structures
+* Distributed execution
 
 ---
 
-## License
+# License
 
 MIT License
-
----
