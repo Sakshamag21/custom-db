@@ -3,13 +3,32 @@ package coreDB
 import (
 	// "os"
 	// "fmt"
-	// "path/filepath"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/reader"
 )
+
+func GetAllFiles(outputDir string) ([]string, error) {
+
+	meta, err := LoadMetadata(outputDir)
+	if err != nil {
+		return nil, err
+	}
+
+	snap := getSnapshot(meta, meta.CurrentSnapshot)
+
+	var files []string
+
+	for _, f := range snap.Files {
+		full := filepath.Join(outputDir, f.Path)
+		files = append(files, full)
+	}
+
+	return files, nil
+}
 
 func readSingleFile(filePath string, schema map[string]string) ([]Record, error) {
 

@@ -322,6 +322,13 @@ func WriteParquet(records []Record, outputDir string, bloomConfig BloomConfig) e
 			return err
 		}
 
+		groups := buildRowGroups(recs, meta.Schema, 10000)
+
+		err = saveRowGroupMeta(filePath, groups)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	fmt.Println(newFiles)

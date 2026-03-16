@@ -17,29 +17,34 @@ type VecScan struct {
 	DBPath      string
 	BloomColumn string
 	BloomValue  string
-	data        []Row
-	pos         int
-	loaded      bool
+
+	RGColumn string
+	RGValue  float64
+	data     []Row
+	pos      int
+	loaded   bool
 }
 
 const BatchSize = 1024
 
 func (s *VecScan) Next() (*Batch, error) {
 
-	// 🔹 Load data only once
 	if !s.loaded {
 
 		var rows []Row
 		var err error
 
+		meta, err := coreDB.LoadMetadata(s.DBPath)
+		if err != nil {
+			return nil, err
+		}
+
+		var files []string
+
+		// 🔹 Bloom pruning
 		if s.BloomColumn != "" {
-			meta, err := coreDB.LoadMetadata(s.DBPath)
 
-			if err != nil {
-				return nil, err
-			}
-
-			files, err := coreDB.BloomPruneFiles(
+			files, err = coreDB.BloomPruneFiles(
 				s.DBPath,
 				s.BloomColumn,
 				s.BloomValue,
@@ -49,13 +54,32 @@ func (s *VecScan) Next() (*Batch, error) {
 				return nil, err
 			}
 
-			rows, err = coreDB.ReadSelectedFiles(files, meta.Schema)
+		} else {
+
+			files, err = coreDB.GetAllFiles(s.DBPath)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 🔹 Row-group pruning
+		if s.RGColumn != "" {
+
+			rows, err = coreDB.ReadFilesWithRowGroupPruning(
+				files,
+				meta.Schema,
+				s.RGColumn,
+				s.RGValue,
+			)
 
 			if err != nil {
 				return nil, err
 			}
+
 		} else {
-			rows, err = coreDB.ReadCurrent(s.DBPath)
+
+			rows, err = coreDB.ReadSelectedFiles(files, meta.Schema)
+
 			if err != nil {
 				return nil, err
 			}
@@ -82,14 +106,12 @@ func (s *VecScan) Next() (*Batch, error) {
 		Size:    len(rows),
 	}
 
-	// create column vectors
 	for col := range rows[0] {
 		batch.Columns[col] = &Vector{
 			Data: make([]any, len(rows)),
 		}
 	}
 
-	// fill vectors
 	for i, r := range rows {
 		for col, val := range r {
 			batch.Columns[col].Data[i] = val
