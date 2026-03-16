@@ -367,12 +367,39 @@ rows, _ := agg.Execute()
 
 ---
 
+# Benchmarking
+
+Tested on **Rows: 1,000,000**
+
+**Write Performance:**
+
+* Write time: **2.8596684s**
+* Write throughput: **500,000 rows/sec**
+
+**Full Scan:**
+
+* Rows scanned: **1,000,000**
+* Scan time: **917.6422ms**
+* Scan throughput: **1,089,749 rows/sec**
+
+**Filter Query:**
+
+* Rows returned: **490,477**
+* Filter time: **1.0335478s**
+
+**Equality Query (Bloom Filter Test):**
+
+* Rows returned: **0**
+* Query time: **925.8827ms**
+
+---
+
 # Future Improvements
 
 Planned enhancements:
 
 * SQL parser for string queries
-* Streaming parquet reader (avoid loading full dataset)
+* Streaming parquet reader
 * Parallel file scanning
 * Cost-based query planner
 * Index structures

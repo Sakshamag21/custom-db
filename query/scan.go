@@ -27,6 +27,26 @@ type VecScan struct {
 
 const BatchSize = 1024
 
+func (e *Engine) buildPlan(q Query) {
+
+	scan := &VecScan{
+		DBPath: e.DBPath,
+	}
+
+	var op VecOperator = scan
+
+	if q.Where != nil {
+		op = &VecFilter{
+			Input:    op,
+			Column:   q.Where.Column,
+			Value:    q.Where.Value,
+			CondType: q.Where.Op,
+		}
+	}
+
+	e.op = op
+}
+
 func (s *VecScan) Next() (*Batch, error) {
 
 	if !s.loaded {

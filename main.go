@@ -1,213 +1,106 @@
-// package main
-
-// import (
-// 	"custom_db/coreDB"
-// 	"fmt"
-// 	"log"
-// )
-
-// func main() {
-
-// 	dbPath := "./output"
-
-// 	// schema := map[string]string{
-// 	// 	"id":    "STRING",
-// 	// 	"value": "INT64",
-// 	// 	"age":   "INT32",
-// 	// }
-
-// 	// err := coreDB.CreateDB(dbPath, schema)
-// 	// if err != nil {
-// 	// 	fmt.Println("CreateDB:", err)
-// 	// }
-
-// 	// batch1 := []coreDB.Record{
-// 	// 	{"id": "apple123", "value": int64(10), "age": int32(25)},
-// 	// 	{"id": "banana456", "value": int64(20), "age": int32(30)},
-// 	// }
-
-// 	// err = coreDB.WriteParquet(batch1, dbPath)
-// 	// if err != nil {
-// 	// 	log.Fatal("Write Error:", err)
-// 	// }
-
-// 	// fmt.Println("Batch 1 inserted.")
-
-// 	// batch2 := []coreDB.Record{
-// 	// 	{"id": "apricot789", "value": int64(40), "age": int32(35)},
-// 	// 	{"id": "blueberry111", "value": int64(50), "age": int32(28)},
-// 	// }
-
-// 	// err = coreDB.WriteParquet(batch2, dbPath)
-// 	// if err != nil {
-// 	// 	log.Fatal("Write Error:", err)
-// 	// }
-
-// 	// fmt.Println("Batch 2 inserted.")
-
-// 	// currentRecords, err := coreDB.ReadCurrent(dbPath)
-// 	// if err != nil {
-// 	// 	log.Fatal("ReadCurrent Error:", err)
-// 	// }
-
-// 	// fmt.Println("\nCurrent Snapshot Records:", len(currentRecords))
-// 	// for _, r := range currentRecords {
-// 	// 	fmt.Println(r)
-// 	// }
-
-// 	oldSnapshotID := "snapshot-0001"
-// 	fmt.Println(oldSnapshotID)
-
-// 	oldRecords, err := coreDB.ReadSnapshot(dbPath, oldSnapshotID)
-// 	if err != nil {
-// 		log.Fatal("ReadSnapshot Error:", err)
-// 	}
-
-// 	fmt.Println("\nSnapshot:", oldSnapshotID)
-// 	fmt.Println("Records:", len(oldRecords))
-// 	for _, r := range oldRecords {
-// 		fmt.Println(r)
-// 	}
-
-// 	oldSnapshotID = "snapshot-0004"
-// 	fmt.Println(oldSnapshotID)
-
-// 	oldRecords, err = coreDB.ReadSnapshot(dbPath, oldSnapshotID)
-// 	if err != nil {
-// 		log.Fatal("ReadSnapshot Error:", err)
-// 	}
-
-// 	fmt.Println("\nSnapshot:", oldSnapshotID)
-// 	fmt.Println("Records:", len(oldRecords))
-// 	for _, r := range oldRecords {
-// 		fmt.Println(r)
-// 	}
-
-// 	err = coreDB.CompactCurrentSnapshot(dbPath)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	fmt.Println("Compaction completed")
-
-// 	// oldSnapshotID = "snapshot-0004"
-// 	// fmt.Println(oldSnapshotID)
-
-// 	// oldRecords, err = coreDB.ReadSnapshot(dbPath, oldSnapshotID)
-// 	// if err != nil {
-// 	// 	log.Fatal("ReadSnapshot Error:", err)
-// 	// }
-
-// 	// fmt.Println("\nSnapshot:", oldSnapshotID)
-// 	// fmt.Println("Records:", len(oldRecords))
-// 	// for _, r := range oldRecords {
-// 	// 	fmt.Println(r)
-// 	// }
-
-// 	// err = coreDB.ExpireSnapshots(dbPath, 1)
-// 	// if err != nil {
-// 	// 	log.Fatal("ExpireSnapshots Error:", err)
-// 	// }
-
-// 	// fmt.Println("\nExpired old snapshots. Keeping only latest.")
-
-// 	// err = coreDB.GarbageCollect(dbPath)
-// 	// if err != nil {
-// 	// 	log.Fatal("GarbageCollect Error:", err)
-// 	// }
-
-// 	// fmt.Println("Garbage collection completed.")
-// }
-
 package main
 
 import (
 	"fmt"
-	// "log"
-	// "sync"
-	// "time"
+	"math/rand"
+	"time"
 
-	// "custom_db/coreDB"
+	"custom_db/coreDB"
 	"custom_db/query"
+)
+
+const (
+	DBPath = "./benchdb"
+	Rows   = 1_000_000
 )
 
 func main() {
 
-	// outputDir := "./mydb"
+	fmt.Println("==== Custom Parquet DB Benchmark ====")
+	fmt.Println("Rows:", Rows)
 
-	// schema := map[string]string{
-	// 	"id":    "STRING",
-	// 	"age":   "INT32",
-	// 	"value": "INT64",
-	// }
+	//-------------------------------------
+	// Schema
+	//-------------------------------------
 
-	// bloomConfig := BloomConfig{
-	// 	Columns: []string{"id"},
-	// 	Size:    10000,
-	// 	Hashes:  4,
-	// }
-
-	// err := coreDB.CreateDB(outputDir, schema)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// var wg sync.WaitGroup
-
-	// writer := func(writerID int) {
-	// 	defer wg.Done()
-
-	// 	records := []coreDB.Record{
-	// 		{
-	// 			"id":    fmt.Sprintf("a_user_%d_%d", writerID, time.Now().UnixNano()),
-	// 			"age":   20 + writerID,
-	// 			"value": int64(1000 + writerID),
-	// 		},
-	// 		{
-	// 			"id":    fmt.Sprintf("b_user_%d_%d", writerID, time.Now().UnixNano()),
-	// 			"age":   30 + writerID,
-	// 			"value": int64(2000 + writerID),
-	// 		},
-	// 	}
-
-	// 	err := coreDB.WriteParquet(records, outputDir)
-	// 	if err != nil {
-	// 		fmt.Println("Writer", writerID, "failed:", err)
-	// 		return
-	// 	}
-
-	// 	fmt.Println("Writer", writerID, "committed successfully")
-	// }
-
-	// // Launch 5 concurrent writers
-	// for i := 0; i < 5; i++ {
-	// 	wg.Add(1)
-	// 	go writer(i)
-	// }
-
-	// wg.Wait()
-
-	// results, err := coreDB.ReadCurrent(outputDir)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Println("\nFinal record count:", len(results))
-
-	engine := query.NewEngine("mydb")
-
-	q := query.Query{
-		Select: []string{"id", "age"},
-		Where: &query.Condition{
-			Column: "age",
-			Op:     query.GreaterThan,
-			Value:  30,
-		},
-		Limit: 5,
+	schema := map[string]string{
+		"id":    "STRING",
+		"age":   "INT32",
+		"value": "INT64",
 	}
 
+	err := coreDB.CreateDB(DBPath, schema)
+	if err != nil {
+		fmt.Println("DB may already exist")
+	}
+
+	//-------------------------------------
+	// Bloom Config
+	//-------------------------------------
+
+	bloomConfig := coreDB.BloomConfig{
+		Columns: []string{"id"},
+		Size:    10000,
+		Hashes:  4,
+	}
+
+	//-------------------------------------
+	// Generate dataset (partitioned A-Z)
+	//-------------------------------------
+
+	fmt.Println("\nGenerating dataset...")
+
+	records := make([]coreDB.Record, Rows)
+
+	for i := 0; i < Rows; i++ {
+
+		letter := 'A' + rune(rand.Intn(26))
+
+		id := fmt.Sprintf("%c_user_%d", letter, i)
+
+		records[i] = coreDB.Record{
+			"id":    id,
+			"age":   rand.Intn(100),
+			"value": rand.Int63n(100000),
+		}
+	}
+
+	//-------------------------------------
+	// Write Benchmark
+	//-------------------------------------
+
+	fmt.Println("\nWriting data...")
+
+	start := time.Now()
+
+	err = coreDB.WriteParquet(records, DBPath, bloomConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	writeTime := time.Since(start)
+
+	fmt.Println("Write time:", writeTime)
+	fmt.Println("Write throughput:", Rows/int(writeTime.Seconds()), "rows/sec")
+
+	//-------------------------------------
+	// Full Scan Benchmark
+	//-------------------------------------
+
+	engine := query.NewEngine(DBPath)
+
+	fullQuery := query.Query{
+		Select: []string{"id", "age", "value"},
+	}
+
+	fmt.Println("\nRunning full scan...")
+
+	start = time.Now()
+
+	total := 0
+
 	for {
-		batch, err := engine.Next(q)
+		batch, err := engine.Next(fullQuery)
 		if err != nil {
 			panic(err)
 		}
@@ -216,18 +109,93 @@ func main() {
 			break
 		}
 
-		// fmt.Println(batch)
+		total += batch.Size
+	}
 
-		for i := 0; i < batch.Size; i++ {
-			row := make(map[string]any)
+	scanTime := time.Since(start)
 
-			for col, vec := range batch.Columns {
-				row[col] = vec.Data[i]
-			}
+	fmt.Println("Rows scanned:", total)
+	throughput := float64(total) / scanTime.Seconds()
+	fmt.Printf("Scan time: %v\n", scanTime)
+	fmt.Printf("Scan throughput: %.2f rows/sec\n", throughput)
 
-			fmt.Println(row)
+	//-------------------------------------
+	// Filter Benchmark
+	//-------------------------------------
+
+	filterQuery := query.Query{
+		Select: []string{"id", "age"},
+		Where: &query.Condition{
+			Column: "age",
+			Op:     query.GreaterThan,
+			Value:  50,
+		},
+	}
+
+	fmt.Println("\nRunning filter query...")
+
+	start = time.Now()
+
+	total = 0
+
+	engine.Reset()
+
+	for {
+		batch, err := engine.Next(filterQuery)
+		if err != nil {
+			panic(err)
 		}
 
-		break
+		if batch == nil {
+			break
+		}
+
+		total += batch.Size
 	}
+
+	filterTime := time.Since(start)
+
+	fmt.Println("Rows returned:", total)
+	fmt.Println("Filter time:", filterTime)
+
+	//-------------------------------------
+	// Bloom Filter Benchmark
+	//-------------------------------------
+
+	eqQuery := query.Query{
+		Select: []string{"id", "age"},
+		Where: &query.Condition{
+			Column: "id",
+			Op:     query.Equal,
+			Value:  "A_user_100",
+		},
+	}
+
+	fmt.Println("\nRunning equality query (Bloom test)...")
+
+	start = time.Now()
+
+	total = 0
+
+	engine.Reset()
+
+	for {
+		batch, err := engine.Next(eqQuery)
+		if err != nil {
+			panic(err)
+		}
+
+		if batch == nil {
+			break
+		}
+
+		total += batch.Size
+	}
+
+	bloomTime := time.Since(start)
+
+	fmt.Println("Rows returned:", total)
+	fmt.Println("Equality query time:", bloomTime)
+
+	fmt.Println("\n==== Benchmark Complete ====")
 }

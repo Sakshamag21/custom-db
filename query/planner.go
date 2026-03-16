@@ -3,7 +3,7 @@ package query
 func BuildLogicalPlan(q Query) LogicalPlan {
 	var plan LogicalPlan
 	plan = &LogicalScan{
-		Table: "mydb",
+		Table: "benchdb",
 	}
 
 	if q.Where != nil {

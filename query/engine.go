@@ -16,6 +16,7 @@ type VecOperator interface {
 
 type Engine struct {
 	DBPath string
+	op     VecOperator
 }
 
 func NewEngine(path string) *Engine {
@@ -24,50 +25,21 @@ func NewEngine(path string) *Engine {
 	}
 }
 
+func (e *Engine) Reset() {
+	e.op = nil
+}
+
 func (e *Engine) Next(q Query) (*Batch, error) {
-	// var op Operator
 
-	// op = &Scan{
-	// 	DBPath: e.DBPath,
-	// }
+	// build plan only once
+	if e.op == nil {
 
-	// if q.Where != nil {
-	// 	op = &Filter{
-	// 		Input:    op,
-	// 		Column:   q.Where.Column,
-	// 		Value:    q.Where.Value,
-	// 		CondType: q.Where.Op,
-	// 	}
-	// }
+		logical := BuildLogicalPlan(q)
 
-	// if len(q.Select) > 0 {
-	// 	op = &Projection{
-	// 		Input:   op,
-	// 		Columns: q.Select,
-	// 	}
-	// }
+		optimized := Optimize(logical)
 
-	// if q.Agg != nil {
-	// 	op = &Aggregate{
-	// 		Input:   op,
-	// 		GroupBy: q.GroupBy,
-	// 		Type:    q.Agg.Type,
-	// 		Column:  q.Agg.Column,
-	// 	}
-	// }
+		e.op = BuildPhysical(optimized, e.DBPath)
+	}
 
-	// if q.Limit > 0 {
-	// 	op = &Limit{
-	// 		Input: op,
-	// 		N:     q.Limit,
-	// 	}
-	// }
-
-	logical := BuildLogicalPlan(q)
-
-	optimized := Optimize(logical)
-
-	physical := BuildPhysical(optimized, e.DBPath)
-
-	return physical.Next()
+	return e.op.Next()
 }
